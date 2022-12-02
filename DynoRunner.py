@@ -23,24 +23,38 @@ def main():
     ser = serial.Serial(port=arduino_port, baudrate=115200, timeout=.1)
     ser.flushInput()
 
-    #for line in lines:
+    #command iterator
+    curLine = 0
+    maxLine = len(lines)
+
+    #read serial, watch for ">"
     while True:
+        sent_flag = False
         try:
-            if ser.inWaiting() !=0:
+            #wait until a message is recieved
+            if ser.inWaiting() != 0:
+                #tame the recieved message
                 recieved = ser.readline()
                 decoded = recieved.decode('ascii')
                 size = len(decoded)
                 decoded = decoded[:size-2]
                 print(decoded)
-                data = decoded.split(",")
-                writer.writerow(data)
-
+                
+                #check what the recieved message contained
+                if decoded == ">" and curLine < maxLine:
+                    ser.write(lines[curLine].encode('ascii'))
+                    curLine = curLine + 1
+                    sent_flag = True
+                else:
+                    data = decoded.split(",")
+                    writer.writerow(data)
+            
         # closes all files when user terminates program
         except:
             d.close
             f.close
             ser.close
-            print("ThrottleMapper Terminated")
+            print("DynoRunner Terminated")
             break
 
 def findArduinoPort():
