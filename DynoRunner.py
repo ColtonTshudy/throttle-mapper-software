@@ -1,3 +1,9 @@
+__author__ = "Colton Tshudy, Erin Freck"
+__version__ = "0.3"
+__maintainer__ = "Rob Knight"
+__email__ = "coltont@vt.edu"
+__status__ = "Prototyping"
+
 import string
 import serial
 import time
@@ -5,7 +11,7 @@ import csv
 import serial.tools.list_ports
 
 #======================================
-# BEGIN MAIN
+# DYNO THROTTLE MAPPER RUNNER
 #======================================
 
 def main():
@@ -29,34 +35,46 @@ def main():
 
     #read serial, watch for ">"
     while True:
-        sent_flag = False
+        commandExecuting = False
         try:
             #wait until a message is recieved
             if ser.inWaiting() != 0:
                 #tame the recieved message
                 recieved = ser.readline()
                 decoded = recieved.decode('ascii')
-                size = len(decoded)
-                decoded = decoded[:size-2]
+                decoded = decoded.strip()
                 print(decoded)
                 
                 #check what the recieved message contained
                 if decoded == ">" and curLine < maxLine:
-                    ser.write(lines[curLine].encode('ascii'))
+                    cmd = lines[curLine]
+                    #append a newline character if needed
+                    if cmd[len(cmd)-1] != '\n':
+                        cmd = cmd + "\n"
+
+                    ser.write(cmd.encode('ascii'))
                     curLine = curLine + 1
-                    sent_flag = True
-                else:
+                    commandExecuting = True
+                elif decoded[0] == "[":
+                    decoded[1:]
                     data = decoded.split(",")
                     writer.writerow(data)
+
+            #end the program at the end of the file
+            if curLine >= maxLine and ~commandExecuting:
+                raise Exception("Reached end of command file")
             
         # closes all files when user terminates program
         except:
+            ser.write("t 0\n".encode('ascii')) #throttle 0%
             d.close
             f.close
             ser.close
             print("DynoRunner Terminated")
             break
 
+# Functions
+#================================
 def findArduinoPort():
     import serial.tools.list_ports
     ports = list(serial.tools.list_ports.comports())
@@ -69,4 +87,3 @@ def findArduinoPort():
 # Main Runner
 if __name__ == '__main__':
     main()
-
