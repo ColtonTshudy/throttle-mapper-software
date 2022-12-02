@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.3"
+__version__ = "0.4"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
