@@ -3,9 +3,8 @@ __version__ = "0.3"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
-import string
+from datetime import datetime
 import serial
-import time
 import csv
 import serial.tools.list_ports
 
@@ -19,10 +18,11 @@ def main():
     #CSV to record to
     d = open("throttle_log.csv", "a", newline='')
     writer = csv.writer(d,delimiter=",")
+    formatCSV(writer)
 
     #Plaintxt command file
     f = open("throttle_cmds.txt")
-    lines = f.readlines()
+    lines = f.readlines()   
 
     #serial port   
     ser = serial.Serial(port=arduino_port, baudrate=115200, timeout=.1)
@@ -45,23 +45,26 @@ def main():
                 print(decoded)
                 
                 #check what the recieved message contained
-                if decoded == ">" and curLine < maxLine:
-                    cmd = lines[curLine]
-                    #append a newline character if needed
-                    if cmd[len(cmd)-1] != '\n':
-                        cmd = cmd + "\n"
-
-                    ser.write(cmd.encode('ascii'))
-                    curLine = curLine + 1
-                    commandExecuting = True
-                elif decoded[0] == "[":
-                    decoded[1:]
-                    data = decoded.split(",")
-                    writer.writerow(data)
-
-            #end the program at the end of the file
-            if curLine >= maxLine and ~commandExecuting:
-                raise Exception("Reached end of command file")
+                match decoded[0]:
+                    case '>':
+                        commandExecuting = False
+                        if curLine < maxLine:
+                            cmd = lines[curLine]
+                            #append a newline character if needed
+                            if cmd[len(cmd)-1] != '\n':
+                                cmd = cmd + "\n"
+                            ser.write(cmd.encode('ascii'))
+                            curLine = curLine + 1
+                        elif not commandExecuting:
+                            exitProgram()
+                    case '<':
+                        commandExecuting = True
+                    case '[':
+                        decoded = decoded[1:]
+                        data = decoded.split(",")
+                        writer.writerow(data)
+                    case _:
+                        pass
             
         # closes all files when user terminates program
         except:
@@ -69,7 +72,7 @@ def main():
             d.close
             f.close
             ser.close
-            print("DynoRunner Terminated")
+            print("DynoRunner Terminated Gracefully")
             break
 
 # Functions
@@ -81,8 +84,22 @@ def findArduinoPort():
         if "CH340" in p.description: #arduino nano tag
             return p.device
     return 'COM1' #default return
-    
+
+def exitProgram():
+    softExitMsg = "Reached end of command file"
+    print(softExitMsg) 
+    raise Exception(softExitMsg)
+
+def formatCSV(writer):
+    timestamp = datetime.now()
+    date = timestamp.strftime("%m/%d")
+    year = timestamp.strftime("%Y")
+    time = timestamp.strftime("%H:%M:%S")
+    writer.writerow(["New Run", date, year, time])
+    writer.writerow(["Volts", "Thr%", "Ohms", "Millis"])
+
 
 # Main Runner
+#==================================
 if __name__ == '__main__':
     main()
