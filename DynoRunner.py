@@ -13,6 +13,7 @@ import serial.tools.list_ports
 #======================================
 
 def main():
+    '''Executes all commands of a given text file. Records serial to CSV'''
     arduino_port = findArduinoPort()
 
     #CSV to record to
@@ -84,11 +85,13 @@ def findArduinoPort():
         if "CH340" in p.description: #arduino nano tag
             return p.device
     return 'COM1' #default return
+findArduinoPort.__doc__ = "Returns the Arduino Nano port, otherwise returns port COM1"
 
 def exitProgram():
     softExitMsg = "Reached end of command file"
     print(softExitMsg) 
     raise Exception(softExitMsg)
+exitProgram.__doc__ = "Prints a message and raises an exception to trigger the catch"
 
 def formatCSV(writer):
     timestamp = datetime.now()
@@ -97,7 +100,7 @@ def formatCSV(writer):
     time = timestamp.strftime("%H:%M:%S")
     writer.writerow(["New Run", date, year, time])
     writer.writerow(["Volts", "Thr%", "Ohms", "Millis"])
-
+exitProgram.__doc__ = "Writes a header to the CSV"
 
 # Main Runner
 #==================================
