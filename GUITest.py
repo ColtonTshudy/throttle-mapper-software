@@ -1,45 +1,61 @@
-import PySimpleGUI as sg
-#set the theme for the screen/window
-sg.theme("DarkTanBlue")
-#define layout
-options=[[sg.Frame('Choose your Bread',[[sg.Radio('Whole Wheat','rd_bread', key ='Whole Wheat'),
-                                         sg.Radio('Multigrain','rd_bread', key='Multigrain'),
-                                     sg.Radio('Normal','rd_bread', key='Normal'),
-                                         sg.Radio('Stuffed','rd_bread', key='Stuffed'),
-                                         sg.Radio('Healthy seeds','rd_bread', key='Healthy seeds')]],border_width=10)],
-        [sg.Frame('Choose your Toppings',[[sg.Checkbox('Pepperoni',key='Pepperoni'),
-                                           sg.Checkbox('Mushroom',key='Mushroom'),
-                                         sg.Checkbox('Corn',key='Corn'),
-                                           sg.Checkbox('Cherry Tomatoes',key='Cherry Tomatoes'),
-                                           sg.Checkbox('Olives',key='Olives')]], title_location='ne', background_color='white' )],
-        [sg.Frame('Choose your Sauces', [[sg.Checkbox('Onion',key='Onion Sauce'),
-                                          sg.Checkbox('Paprika',key='Paprika'),
-                                     sg.Checkbox('Schezwan',key='Schezwan'),
-                                          sg.Checkbox('Tandoori',key='Tandoori')]],title_color='yellow', border_width=3)],
-         [sg.Button('Submit', font=('Times New Roman',12))]]
-choices = [[sg.Frame('Customise Your Pizza', layout= options)]]
-        
-items_chosen = [[sg.Text('You have Chosen')],
-                [sg.Text("", size=(50,3),key='options')]]
-              
-# Create layout with two columns using precreated frames
-layout = [[sg.Column(choices, element_justification='c'), sg.Column(items_chosen, element_justification='c')]]
+__author__ = "Colton Tshudy"
+__version__ = "0.1"
+__email__ = "coltont@vt.edu"
+__status__ = "Prototyping"
 
-#Define Window
-window =sg.Window("Column and Frame",layout)
-#Read  values entered by user
-event,values=window.read()
-#access all the values and if selected add them to a string
-strx=""
-for val in values:
-    if window.FindElement(val).get()==True:
-        strx=strx+ " "+ val+","
+import PySimpleGUI as sg
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import ArduinoChatter as ac
+
+sg.theme('DefaultNoMoreNagging')
+
+layout = [
+    [ 
+        sg.Text('Throttle% Over Time'),
+    ],
+    [ 
+        sg.Canvas(key = '-CANVAS-')
+    ],
+    [ 
+        sg.Text('Serial Readout')
+    ],
+    [
+        sg.Button('Start'),
+        sg.Button('Terminate'),
+        sg.Input(size=(25, 5000), enable_events=True, key="-COMMAND-"),
+        sg.Button('Send', bind_return_key=True),
+    ],
+]
+
+window = sg.Window('Window Title',
+                layout,
+                default_element_size=(12, 1),
+                resizable=True,finalize=True)
+
+#matplotlib
+fig = plt.figure(figsize = (5,3))
+fig.add_subplot(111).plot([],[])
+figure_canvas_agg = FigureCanvasTkAgg(fig,window['-CANVAS-'].TKCanvas)
+figure_canvas_agg.draw()
+figure_canvas_agg.get_tk_widget().pack()
 
 while True:
-    event, values = window.read()  # Read  values entered by user
-    if event == sg.WIN_CLOSED:  # If window is closed by user terminate While Loop
-        break
-    if event == 'Submit':# If submit button is clicked display chosen values
-        window['options'].update(strx)  # output the final string
-#Close Window
-window.close()   
+    try:
+        event, values = window.read()
+        if event == 'Exit' or event == sg.WIN_CLOSED:
+                break
+        elif event == 'Send':
+            print(values['-COMMAND-'])
+            window['-COMMAND-']('')
+        
+    except KeyboardInterrupt:
+        window.close()
+
+def update_figure(data):
+    axes = fig.axes
+    x = [int(i[0])/1000 for i in data]
+    y = [int(i[1]) for i in data]
+    axes[0].plot(x,y,'b-')
+    figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().pack()

@@ -8,9 +8,12 @@ import serial
 import csv
 import serial.tools.list_ports
 from enum import Enum
+import os
 
 #======================================
 # DYNO THROTTLE MAPPER RUNNER
+# | Settings:
+SER_PORT_NAME = 'USB'
 #======================================
 
 class State(Enum):
@@ -20,13 +23,16 @@ class State(Enum):
     
 def main():
     '''Executes all commands of a given text file. Records serial to CSV'''
+    
     arduino_port = findArduinoPort()
+    if arduino_port == False:
+        exitProgram('Serial port not found.')
 
     #CSV setup
-    writer, d = formatCSV()
+    writer, d = createCSV()
 
     #Plaintxt command file
-    f = open("throttle_cmds.txt")
+    f = open('throttle_cmds.txt')
     lines = f.readlines()
 
     #serial port   
@@ -57,7 +63,7 @@ def main():
                         if msgType == '>':
                             cmd = lines[curLine]
                             if cmd[len(cmd)-1] != '\n':
-                                cmd = cmd + "\n"
+                                cmd = cmd + '\n'
                             ser.write(cmd.encode('ascii'))
                             curLine = curLine + 1
                             fsmState = State.Executing
@@ -69,7 +75,7 @@ def main():
                             fsmState = State.Idle
 
                     case State.Finished:
-                        exitProgram()
+                        exitProgram('Reached end of command file.')
 
                     case _:
                         pass
@@ -86,7 +92,7 @@ def main():
             d.close
             f.close
             ser.close
-            print("DynoRunner Terminated Gracefully")
+            print('DynoRunner Terminated')
             break
 
 # Functions
@@ -96,26 +102,27 @@ def findArduinoPort():
     import serial.tools.list_ports
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        if "CH340" in p.description: #arduino nano tag
+        if SER_PORT_NAME in p.description: #arduino nano tag
             return p.device
-    return 'COM1' #default return
+    return False
 
-def exitProgram():
+def exitProgram(softExitMsg):
     '''Prints a message and raises an exception to trigger the catch'''
-    softExitMsg = "Reached end of command file"
     print(softExitMsg) 
     raise Exception(softExitMsg)
 
-def formatCSV():
+def createCSV():
     '''Opens a new CSV and writes a header'''
     timeobj = datetime.now()
-    timestamp = timeobj.strftime("%m_%d_%Y_%I_%M_%p")
+    timestamp = timeobj.strftime('%m_%d_%Y_%I_%M_%p')
 
-    csvName = "".join(["throttle_log_", timestamp, ".csv"])
-    d = open(csvName, 'a', newline='')
-    writer = csv.writer(d,delimiter=",")
+    abs_path = os.path.dirname(__file__)
+    rel_path = ''.join(['logs/throttle_log_', timestamp, '.csv'])
+    full_path = os.path.join(abs_path, rel_path)
+    d = open(full_path, 'w', newline='')
+    writer = csv.writer(d,delimiter=',')
     
-    writer.writerow(["Volts", "Thr%", "Ohms", "Millis"])
+    writer.writerow(['Volts', 'Thr%', 'Ohms', 'Millis'])
     return writer, d
 
 # Main Runner
