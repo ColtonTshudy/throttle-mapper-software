@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.51"
+__version__ = "0.52"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -74,8 +74,22 @@ ser.flushInput()
 
 # Serial
 # =======================================
-def checkSerial(paused, command, terminate):
+def checkSerial(paused, command, terminate, restart):
     '''Executes all commands of a given text file. Records serial to CSV'''
+    
+    #settings arguments
+    if restart:
+        checkSerial.curLine = 0
+        checkSerial.fsmState = State.Pending
+
+    #execute argument commands
+    if command != False:
+        ser.write(command.encode('ascii'))
+        print('commanded')
+    if terminate:
+        ser.write('q'.encode('ascii'))
+        print('terminated')
+
 
     #wait until a message is recieved
     if ser.inWaiting() != 0:
@@ -106,7 +120,6 @@ def checkSerial(paused, command, terminate):
                 if msgType == '<':
                     if checkSerial.curLine >= checkSerial.maxLine:
                         checkSerial.fsmState = State.Finished
-                        return '', 'Reached end of command file.', False
                     else:
                         checkSerial.fsmState = State.Idle
 
@@ -132,7 +145,8 @@ checkSerial.fsmState = State.Idle
 checkSerial.curLine = 0
 checkSerial.maxLine = len(lines)
 
-
+def endOfFile():
+    return checkSerial.fsmState == State.Finished
 
 def closeRunner():
     '''closes all files when user terminates program'''
