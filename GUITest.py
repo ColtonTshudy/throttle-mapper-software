@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.4"
+__version__ = "0.41"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -138,10 +138,12 @@ while True:
             if paused:
                 paused = False
                 window['-PAUSE-'].Update("Pause")
+                window['-SEND-'].update(disabled=True)
                 if dr.endOfFile():
                     restart = True
             else:
                 paused = True
+                window['-SEND-'].update(disabled=False)
                 window['-PAUSE-'].Update("Unpause")
 
         #send
