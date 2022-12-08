@@ -14,8 +14,12 @@ sg.theme('DefaultNoMoreNagging')
 
 plot_col = [
     [ 
-        sg.Canvas(key = '-CANVAS-')
+        sg.Canvas(key = '-CANVAS-'),
     ],
+    [ 
+        sg.Button('Moving Window Time Scale', key='-PLOT_WINDOW-'),
+        sg.Button('Full Time Scale', key='-PLOT_FULL-')
+    ]
 ]
 
 serial_col = [ 
@@ -23,14 +27,18 @@ serial_col = [
         sg.Text('Serial Readout')
     ],
     [ 
-        sg.Multiline(size=(70,10), font='Tahoma 10', key='-STLINE-', autoscroll=False)
+        sg.Multiline(size=(40,15), font='Tahoma 10', key='-STLINE-', autoscroll=False),
+        sg.Multiline(size=(30,15), font='Tahoma 10', key='-RAWDATA-', autoscroll=False)
     ],
     [
         sg.Button('Start', key = '-PAUSE-'),
-        sg.Button('Terminate', key='-TERMINATE-'),
+        sg.Button('Terminate', key='-TERMINATE-', button_color='red'),
         sg.Input(size=(25, 5000), enable_events=True, key="-COMMAND-"),
         sg.Button('Send', bind_return_key=True, key='-SEND-'),
         sg.Checkbox('Autoscroll', default=True, key='-AS-')
+    ],
+    [
+        sg.Text('Notice: pause only pauses after the current command is complete.')
     ],
 ]
 
@@ -69,18 +77,26 @@ command = False
 terminate = False
 auto_scroll = True
 restart = False
+fullgraph = True
+x_min = 0
 
 def update_figure(data):
     axes = fig.axes
     axes[0].clear()
-    xs.append(float(data[0])/1000)
-    ys.append(float(data[1]))
+    if len(data) == 2:
+        xs.append(float(data[0])/1000)
+        ys.append(float(data[1]))
     axes[0].plot(xs,ys,'-b')
     plt.title('Throttle Voltage', fontsize = 10)
     plt.ylabel('Voltage (v)')
     plt.xlabel('Time (s)')
     plt.gca().set_ylim(ymin=0, ymax=5)
     plt.grid(linestyle=':')
+    if fullgraph:
+        x_min = 0
+    else:
+        x_min = xs[-1]-20
+    plt.xlim(xmin = x_min)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 
@@ -95,7 +111,10 @@ while True:
 
         #see if checkSerial returned data
         if serial_r != False:
-            window['-STLINE-'].print(serial_r[1])
+            if serial_r[0] != '[':
+                window['-STLINE-'].print(serial_r[1], autoscroll = auto_scroll)
+            else:
+                window['-RAWDATA-'].print(serial_r[1], autoscroll = auto_scroll)
             if serial_r[2] != False:
                 volts = serial_r[2][0]
                 time = serial_r[2][3]
@@ -105,7 +124,7 @@ while True:
         if dr.endOfFile() and not paused:
             paused = True
             window['-PAUSE-'].Update("Start")
-            window['-STLINE-'].print("Reached end of command file.")
+            window['-STLINE-'].print("Reached end of command file.", autoscroll = auto_scroll)
 
         #get gui window events
         event, values = window.read(timeout = 1) #1ms timeout
@@ -133,13 +152,21 @@ while True:
         #terminate
         elif event == '-TERMINATE-':
             terminate = True
+            paused = True
+            window['-PAUSE-'].Update("Start")
+            window['-STLINE-'].print("Terminated command file execution.", autoscroll = auto_scroll)
+
+        #plot buttons
+        elif event == '-PLOT_WINDOW-':
+            fullgraph = False
+            update_figure('')
+        elif event == '-PLOT_FULL-':
+            fullgraph = True
+            update_figure('')
 
         #autoscroll
         if values['-AS-'] != auto_scroll:
             auto_scroll = values['-AS-']
-            window['-STLINE-'].Update(autoscroll=auto_scroll)
-
-        
         
     except KeyboardInterrupt:
         dr.closeRunner()

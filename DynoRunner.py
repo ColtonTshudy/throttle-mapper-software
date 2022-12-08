@@ -76,19 +76,22 @@ ser.flushInput()
 # =======================================
 def checkSerial(paused, command, terminate, restart):
     '''Executes all commands of a given text file. Records serial to CSV'''
-    
+
+    #execute argument commands
+    if command != False:
+        if command[len(command)-1] != '\n':
+            command = command + '\n'
+        ser.write(command.encode('ascii'))
+        print(command)
+    if terminate:
+        ser.write('q\n'.encode('ascii'))
+        print('terminated')
+        restart = True
+
     #settings arguments
     if restart:
         checkSerial.curLine = 0
         checkSerial.fsmState = State.Pending
-
-    #execute argument commands
-    if command != False:
-        ser.write(command.encode('ascii'))
-        print('commanded')
-    if terminate:
-        ser.write('q'.encode('ascii'))
-        print('terminated')
 
 
     #wait until a message is recieved
