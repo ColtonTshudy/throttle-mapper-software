@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.20"
+__version__ = "0.21"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -67,7 +67,7 @@ def update_figure(data):
     axes = fig.axes
     x = float(data[0])/1000
     y = float(data[1])
-    axes[0].plot(x,y,'bo')
+    axes[0].plot(x,y,'-o')
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 

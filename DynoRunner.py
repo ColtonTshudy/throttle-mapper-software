@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.50"
+__version__ = "0.51"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -105,12 +105,13 @@ def checkSerial(paused, command, terminate):
             case State.Executing:
                 if msgType == '<':
                     if checkSerial.curLine >= checkSerial.maxLine:
-                        fsmState = State.Finished
+                        checkSerial.fsmState = State.Finished
+                        return '', 'Reached end of command file.', False
                     else:
-                        fsmState = State.Idle
+                        checkSerial.fsmState = State.Idle
 
             case State.Finished:
-                exitProgram('Reached end of command file.')
+                pass
 
             case _:
                 pass
