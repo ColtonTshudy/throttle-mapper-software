@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.41"
+__version__ = "0.42"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -77,7 +77,7 @@ command = False
 terminate = False
 auto_scroll = True
 restart = False
-fullgraph = True
+fullgraph = False
 x_min = 0
 
 def update_figure(data):
@@ -123,6 +123,7 @@ while True:
         #check if command file is done
         if dr.endOfFile() and not paused:
             paused = True
+            window['-SEND-'].update(disabled=False)
             window['-PAUSE-'].Update("Start")
             window['-STLINE-'].print("Reached end of command file.", autoscroll = auto_scroll)
 
