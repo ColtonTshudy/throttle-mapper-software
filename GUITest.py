@@ -6,7 +6,7 @@ __status__ = "Prototyping"
 import PySimpleGUI as sg
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import DynoRunner as ac
+import DynoRunner as dr
 
 sg.theme('DefaultNoMoreNagging')
 
