@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.42"
+__version__ = "0.43"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -70,9 +70,10 @@ def main():
 
                     case State.Executing:
                         if msgType == '<':
-                            if curLine < maxLine:
+                            if curLine >= maxLine:
                                 fsmState = State.Finished
-                            fsmState = State.Idle
+                            else:
+                                fsmState = State.Idle
 
                     case State.Finished:
                         exitProgram('Reached end of command file.')
