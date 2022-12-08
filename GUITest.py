@@ -24,7 +24,7 @@ serial_col = [
         sg.Multiline(size=(70,10), font='Tahoma 10', key='-STLINE-', autoscroll=True)
     ],
     [
-        sg.Button('Start'),
+        sg.Button('Start', key = '-PAUSE-'),
         sg.Button('Terminate'),
         sg.Input(size=(25, 5000), enable_events=True, key="-COMMAND-"),
         sg.Button('Send', bind_return_key=True),
@@ -48,13 +48,15 @@ window = sg.Window(titlebar,
 
 #matplotlib
 fig = plt.figure(figsize = (6,4))
-fig.add_subplot(111).plot([],[])
+fig.add_subplot(1,1,1).plot([],[])
 figure_canvas_agg = FigureCanvasTkAgg(fig,window['-CANVAS-'].TKCanvas)
 figure_canvas_agg.draw()
 figure_canvas_agg.get_tk_widget().pack()
-plt.title('Voltage', fontsize = 10)
-plt.xlabel('Voltage (v)')
-plt.ylabel('Time (s)')
+plt.title('Throttle Voltage', fontsize = 10)
+plt.ylabel('Voltage (v)')
+plt.xlabel('Time (s)')
+plt.gca().set_ylim(ymin=0, ymax=5)
+plt.grid(linestyle=':')
 
 # variables
 paused = True
@@ -63,9 +65,7 @@ def update_figure(data):
     axes = fig.axes
     x = float(data[0])/1000
     y = float(data[1])
-    print(x)
-    print (y)
-    axes[0].plot(x,y)
+    axes[0].plot(x,y,'bo')
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 
@@ -85,8 +85,13 @@ while True:
         elif event == 'Send':
             print(values['-COMMAND-'])
             window['-COMMAND-']('')
-        elif event == 'Start':
-            paused = not paused
+        elif event == '-PAUSE-':
+            if paused:
+                paused = False
+                window['-PAUSE-'].Update("Pause")
+            else:
+                paused = True
+                window['-PAUSE-'].Update("Unpause")            
         
     except KeyboardInterrupt:
         dr.closeRunner()
