@@ -20,80 +20,6 @@ class State(Enum):
     Idle = 0
     Executing = 1
     Finished = 2
-    
-def main():
-    '''Executes all commands of a given text file. Records serial to CSV'''
-    
-    arduino_port = findArduinoPort()
-    if arduino_port == False:
-        exitProgram('Serial port not found.')
-
-    #CSV setup
-    writer, d = createCSV()
-
-    #Plaintxt command file
-    f = open('throttle_cmds.txt')
-    lines = f.readlines()
-
-    #serial port   
-    ser = serial.Serial(port=arduino_port, baudrate=115200, timeout=.1)
-    ser.flushInput()
-
-    #command iterator
-    curLine = 0
-    maxLine = len(lines)
-
-    #state variable
-    fsmState = State.Idle
-
-    while True:
-        try:
-            #wait until a message is recieved
-            if ser.inWaiting() != 0:
-                #tame the recieved message
-                recieved = ser.readline()
-                decoded = recieved.decode('ascii')
-                decoded = decoded.strip()
-                print(decoded)
-                msgType = decoded[0]
-                
-                #fsm to control sending commands
-                match fsmState:
-                    case State.Idle:
-                        if msgType == '>':
-                            cmd = lines[curLine]
-                            if cmd[len(cmd)-1] != '\n':
-                                cmd = cmd + '\n'
-                            ser.write(cmd.encode('ascii'))
-                            curLine = curLine + 1
-                            fsmState = State.Executing
-
-                    case State.Executing:
-                        if msgType == '<':
-                            if curLine < maxLine:
-                                fsmState = State.Finished
-                            fsmState = State.Idle
-
-                    case State.Finished:
-                        exitProgram('Reached end of command file.')
-
-                    case _:
-                        pass
-                
-                #record data to CSV
-                if msgType == '[':
-                    decoded = decoded[1:]
-                    data = decoded.split(",")
-                    writer.writerow(data)
-            
-        # closes all files when user terminates program
-        except:
-            ser.write("q".encode('ascii')) #send quit command
-            d.close
-            f.close
-            ser.close
-            print('DynoRunner Terminated')
-            break
 
 # Functions
 #================================
@@ -125,7 +51,84 @@ def createCSV():
     writer.writerow(['Volts', 'Thr%', 'Ohms', 'Millis'])
     return writer, d
 
-# Main Runner
-#==================================
-if __name__ == '__main__':
-    main()
+# Startup
+# ==========================================
+
+arduino_port = findArduinoPort()
+if arduino_port == False:
+    exitProgram('Serial port not found.')
+
+#CSV setup
+writer, d = createCSV()
+
+#Plaintxt command file
+f = open('throttle_cmds.txt')
+lines = f.readlines()
+
+#serial port   
+ser = serial.Serial(port=arduino_port, baudrate=115200, timeout=.1)
+ser.flushInput()
+
+#command iterator
+curLine = 0
+maxLine = len(lines)
+
+# Serial
+# =======================================
+    
+def checkSerial(paused):
+    '''Executes all commands of a given text file. Records serial to CSV'''
+
+    #state variable
+    fsmState = State.Idle
+
+    #wait until a message is recieved
+    if ser.inWaiting() != 0:
+        #tame the recieved message
+        recieved = ser.readline()
+        decoded = recieved.decode('ascii')
+        decoded = decoded.strip()
+        print(decoded)
+        msgType = decoded[0]
+        data = False #for if data is recieved
+        
+        #fsm to control sending commands
+        match fsmState:
+            case State.Idle:
+                if msgType == '>' and not paused:
+                    cmd = lines[curLine]
+                    if cmd[len(cmd)-1] != '\n':
+                        cmd = cmd + '\n'
+                    ser.write(cmd.encode('ascii'))
+                    curLine = curLine + 1
+                    fsmState = State.Executing
+
+            case State.Executing:
+                if msgType == '<':
+                    if curLine < maxLine:
+                        fsmState = State.Finished
+                    fsmState = State.Idle
+
+            case State.Finished:
+                exitProgram('Reached end of command file.')
+
+            case _:
+                pass
+        
+        #record data to CSV
+        if msgType == '[':
+            rawdata = decoded[1:]
+            data = rawdata.split(",")
+            writer.writerow(data)
+        
+        return msgType, decoded, data
+
+    return False
+
+def closeRunner():
+    '''closes all files when user terminates program'''
+    ser.write("q".encode('ascii')) #send quit command
+    d.close
+    f.close
+    ser.close
+    print('DynoRunner Terminated')
