@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.12"
+__version__ = "0.20"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
