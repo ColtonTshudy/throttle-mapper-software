@@ -74,7 +74,7 @@ ser.flushInput()
 
 # Serial
 # =======================================
-def checkSerial(paused):
+def checkSerial(paused, command, terminate):
     '''Executes all commands of a given text file. Records serial to CSV'''
 
     #wait until a message is recieved
@@ -104,9 +104,10 @@ def checkSerial(paused):
 
             case State.Executing:
                 if msgType == '<':
-                    if checkSerial.curLine < checkSerial.maxLine:
-                        checkSerial.fsmState = State.Finished
-                    checkSerial.fsmState = State.Idle
+                    if checkSerial.curLine >= checkSerial.maxLine:
+                        fsmState = State.Finished
+                    else:
+                        fsmState = State.Idle
 
             case State.Finished:
                 exitProgram('Reached end of command file.')

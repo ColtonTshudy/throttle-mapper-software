@@ -60,6 +60,8 @@ plt.grid(linestyle=':')
 
 # variables
 paused = True
+command = False
+terminate = False
 
 def update_figure(data):
     axes = fig.axes
@@ -71,7 +73,7 @@ def update_figure(data):
 
 while True:
     try:
-        serial_r = dr.checkSerial(paused)
+        serial_r = dr.checkSerial(paused, command, terminate)
         if serial_r != False:
             window['-STLINE-'].print(serial_r[1],)
             if(serial_r[2] != False):

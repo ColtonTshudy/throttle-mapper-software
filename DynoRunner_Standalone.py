@@ -70,9 +70,10 @@ def main():
 
                     case State.Executing:
                         if msgType == '<':
-                            if curLine < maxLine:
+                            if curLine >= maxLine:
                                 fsmState = State.Finished
-                            fsmState = State.Idle
+                            else:
+                                fsmState = State.Idle
 
                     case State.Finished:
                         exitProgram('Reached end of command file.')
