@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.2"
+__version__ = "0.21"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -8,7 +8,7 @@ __status__ = "Prototyping"
 import serial
 import serial.tools.list_ports
 from enum import Enum
-import Logger as logger
+import logger as logger
 
 #Gobals (objects)
 class State(Enum):
@@ -24,16 +24,19 @@ class Communicator:
         self._ports = list(serial.tools.list_ports.comports())
         self._portindex = 0
         self._message = ''
+        self._messagetype = ''
         self._available = False
         self._busy = True
         self._ser = ''
         self._fileisopen = ''
         self._cmdfile = ''
         self._cmdindex = 0
+        self._commands = ''
         self._totalcommands = 0
         self._state = State.Idle
-        self._paused = True
         self._log = logger.Logger()
+        self._paused = True
+        self._end_of_file = False
         self.autoFindPort(default_port_name)
 
         if generate_csv:
@@ -45,7 +48,7 @@ class Communicator:
         i = 0
         for p in self.listPorts():
             if port_name in p: #arduino nano tag
-                self.setPort(i)
+                self.setPort(i,  baudrate=self._baudrate)
                 return True
             i += 1
         self.setPort(0) #default to port 0
@@ -60,15 +63,20 @@ class Communicator:
             return self._message
         else: return False
 
+    def messageType(self):
+        return self._messagetype
+
     def listPorts(self):
         port_descs = []
         for p in self._ports:
             port_descs.append(p.description)
         return port_descs
 
-    def setPort(self, port_index, baudrate=115200):
+    def setPort(self, port_index, baudrate=-1):
         self._portindex = port_index
-        self._baudrate = baudrate
+        if baudrate != -1:
+            self._baudrate = baudrate
+            
         if not self._busy:
             self._ser.close()
         try:
@@ -80,19 +88,25 @@ class Communicator:
             return False
 
     def currentPort(self):
-        return self._ports[self._portindex]
+        return self._ports[self._portindex].description
 
     def isBusy(self):
         return self._busy
 
     def sendCommand(self, command):
-        if not self._busy:
-            command = command.join('\n')
+        if not self._busy and len(command)>0:
+            if command[-1] != '\n':
+                command += '\n'
             if 'q' in command:
-                self.reset()
+                self._state = State.Pending
+                self._paused = True
+                self._end_of_file = True
             self._ser.write(command.encode('ascii'))
 
     # State related methods
+    def isPaused(self):
+        return self._paused
+
     def pause(self):
         self._paused = True
     
@@ -100,19 +114,29 @@ class Communicator:
         self._paused = False
 
     def terminate(self):
-        self.sendCommand('q')
+        self.sendCommand('q')        
 
-    def reset(self):
-        self._state = State.Pending
+    def reachedFileEnd(self):
+        return self._end_of_file
+
+    def resetFile(self):
         self._cmdindex = 0
-        self._paused = True
+        self._end_of_file = False
 
     # File reader methods
-    def setCommandFile(self, path):
-        self._cmdfile = open(path)
-        self._commands = self._cmdfile.readlines()
-        self._totalcommands = len(self._commands)
-        self._fileisopen = True
+    def openCommandFile(self, path):
+        if self._fileisopen:
+            self._cmdfile.close()
+        
+        try:
+            self._cmdfile = open(path)
+            self._commands = self._cmdfile.readlines()
+            self._totalcommands = len(self._commands)
+            self._fileisopen = True
+        except:
+            self._commands = 0
+            self._totalcommands = 0
+            self._fileisopen = False
 
     def closeCommandFile(self):
         if self._fileisopen:
@@ -133,9 +157,11 @@ class Communicator:
 
             #tame the recieved message
             recieved = self._ser.readline()
-            decoded = recieved.decode('ascii').strip()
-            msgType = decoded[0]
-            self._message = decoded
+            decoded = ''
+            msgType = ''
+            if recieved != '':
+                decoded = recieved.decode('ascii').strip()
+                msgType = decoded[0]
             
             #fsm to control sending commands
             match self._state:
@@ -151,6 +177,7 @@ class Communicator:
                     if msgType == '<':
                         if self._cmdindex >= self._totalcommands:
                             self._state = State.Finished
+                            self._end_of_file = True
                         else:
                             self._state = State.Idle
                 case State.Finished:
@@ -164,64 +191,15 @@ class Communicator:
                 data = rawdata.split(",")
                 self._log.logData(data)
 
+            #store data to class variables
+            self._message = decoded
+            self._messagetype = msgType
         return True
 
     def close(self):
         '''closes all objects'''
         self.terminate()
-        logger.close()
-        self._cmdfile.close()
+        self._log.close()
+        if self._fileisopen:
+            self._cmdfile.close()
         self._ser.close()
-
-def tester():
-    import time
-
-    test = Communicator(baudrate=115200, generate_csv=False)
-    print('is busy:', test.isBusy())
-    print('is paused:', test._paused)
-    test.resume()
-    print('is paused:', test._paused)
-    test.pause()
-    print('is paused:', test._paused)
-    test.setPort(0)
-    print('port:', test.currentPort())
-    print('is busy:', test.isBusy())
-    test.autoFindPort("CH340")
-    print('port:', test.currentPort())
-    print('is busy:', test.isBusy())
-
-    print('Waiting for message...')
-    time.sleep(2)
-    test.sendCommand('t 50')
-    test.checkSerial()
-    print('message available:', test.hasMessage())
-    print('message recieved:', test.readMessage())
-    print('message available:', test.hasMessage())
-    print('Waiting for next messages...')
-    time.sleep(1)
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-    test.checkSerial()
-    print('message recieved:', test.readMessage())
-
-tester()

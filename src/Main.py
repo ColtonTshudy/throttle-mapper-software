@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.1"
+__version__ = "0.20"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -8,9 +8,13 @@ __status__ = "Prototyping"
 import PySimpleGUI as sg
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import Communicator as SerialCommunicator
+import serial_comms
 
 sg.theme('DefaultNoMoreNagging')
+sc = serial_comms.Communicator(baudrate=115200, generate_csv=False)
+
+def IText(*args, **kwargs):
+    return sg.Col([[sg.Text(*args, **kwargs)]], pad=(0,0))
 
 plot_col = [
     [ 
@@ -22,9 +26,21 @@ plot_col = [
     ]
 ]
 
+serial_connectivity_col = [
+    [ 
+        sg.Text('Connected!', key="-CON-", visible = False),
+        sg.Text('Disconnected.', key='-DIS-', visible = False),
+    ],
+]
+
 serial_col = [ 
     [ 
-        sg.Text('Serial Readout')
+        sg.Text('Port Select'),
+        sg.Combo(sc.listPorts(), default_value=sc.currentPort(), key='-PORT_SEL-', enable_events=True),
+        sg.Col(serial_connectivity_col, pad=(0,0))
+    ],
+    [ 
+        sg.Text('Serial Messages                                                     Serial Data')
     ],
     [ 
         sg.Multiline(size=(40,15), font='Tahoma 10', key='-STLINE-', autoscroll=False),
@@ -68,8 +84,8 @@ plt.ylabel('Voltage (v)')
 plt.xlabel('Time (s)')
 plt.gca().set_ylim(ymin=0, ymax=5)
 plt.grid(linestyle=':')
-xs = []
-ys = []
+xs = [0]
+ys = [0]
 
 # variables
 paused = True
@@ -100,29 +116,27 @@ def update_figure(data):
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 
-sc = SerialCommunicator()
+startup_msg = f'Serial connected? {not sc.isBusy()}'
+window['-STLINE-'].print(startup_msg, autoscroll = auto_scroll)
 
 while True:
+    sc.checkSerial()
 
-    #reset any button variables
-    command = False
-    terminate = False
-    restart = False
-
-    #see if checkSerial returned data
-    if sc.hasMessage:
-        if serial_r[0] != '[':
-            window['-STLINE-'].print(serial_r[1], autoscroll = auto_scroll)
+    #see if a serial message is available
+    if sc.hasMessage():
+        recieved = sc.readMessage()
+        if sc.messageType() != '[':
+            window['-STLINE-'].print(recieved, autoscroll = auto_scroll)
         else:
-            window['-RAWDATA-'].print(serial_r[1], autoscroll = auto_scroll)
-        if serial_r[2] != False:
-            volts = serial_r[2][0]
-            time = serial_r[2][3]
+            window['-RAWDATA-'].print(recieved, autoscroll = auto_scroll)
+            data = recieved[1:].split(",")
+            volts = data[0]
+            time = data[3]
             update_figure([time, volts])
 
     #check if command file is done
-    if dr.endOfFile() and not paused:
-        paused = True
+    if sc.reachedFileEnd() and not sc.isPaused():
+        sc.pause()
         window['-SEND-'].update(disabled=False)
         window['-PAUSE-'].Update("Start")
         window['-STLINE-'].print("Reached end of command file.", autoscroll = auto_scroll)
@@ -132,30 +146,29 @@ while True:
 
     #exit
     if event == 'Exit' or event == sg.WIN_CLOSED:
-            break
+        break
 
     #pause
     elif event == '-PAUSE-':
-        if paused:
-            paused = False
+        if sc.isPaused():
+            sc.resume()
             window['-PAUSE-'].Update("Pause")
             window['-SEND-'].update(disabled=True)
-            if dr.endOfFile():
-                restart = True
+            if sc.reachedFileEnd():
+                sc.resetFile()
         else:
-            paused = True
+            sc.pause()
             window['-SEND-'].update(disabled=False)
             window['-PAUSE-'].Update("Unpause")
 
     #send
     elif event == '-SEND-':
-        command = values['-COMMAND-'];
+        sc.sendCommand(values['-COMMAND-']);
         window['-COMMAND-']('')
 
     #terminate
     elif event == '-TERMINATE-':
-        terminate = True
-        paused = True
+        sc.terminate()
         window['-PAUSE-'].Update("Start")
         window['-STLINE-'].print("Terminated command file execution.", autoscroll = auto_scroll)
 
@@ -170,3 +183,18 @@ while True:
     #autoscroll
     if values['-AS-'] != auto_scroll:
         auto_scroll = values['-AS-']
+
+    #port select
+    if event == '-PORT_SEL-':
+        new_port = values['-PORT_SEL-']
+        sc.autoFindPort(new_port)
+        window['-STLINE-'].print(f'Serial Port: {sc.currentPort()}', autoscroll = auto_scroll)
+        if sc.isBusy():
+            window['-CON-'].update(visible=False)
+            window['-DIS-'].update(visible=True)
+        else:
+            window['-CON-'].update(visible=True)
+            window['-DIS-'].update(visible=False)
+        xs = [0]
+        ys = [0]
+        update_figure('')
