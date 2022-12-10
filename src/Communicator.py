@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy, Erin Freck"
-__version__ = "0.1"
+__version__ = "0.2"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -19,8 +19,8 @@ class State(Enum):
 
 #BEGIN CLASS DEFINITION
 class Communicator:
-    def __init__(self, baudrate=115200, generate_csv=True, default_port_name = 'CH340'):
-        self.baudrate = baudrate
+    def __init__(self, baudrate=115200, generate_csv=True, default_port_name='CH340'):
+        self._baudrate = baudrate
         self._ports = list(serial.tools.list_ports.comports())
         self._portindex = 0
         self._message = ''
@@ -42,19 +42,22 @@ class Communicator:
     # Serial methods
     def autoFindPort(self, port_name):
         '''Returns the Arduino Nano port, otherwise returns port COM1'''
-        i=0
+        i = 0
         for p in self.listPorts():
             if port_name in p: #arduino nano tag
                 self.setPort(i)
                 return True
-            i=i+1
+            i += 1
         self.setPort(0) #default to port 0
         return False
                 
-    def isAvailable(self):
+    def newMessage(self):
+        return self._available
+
+    def readMessage(self):
         if self._available:
-            self.available = False
-            return True
+            self._available = False
+            return self._message
         else: return False
 
     def listPorts(self):
@@ -63,15 +66,16 @@ class Communicator:
             port_descs.append(p.description)
         return port_descs
 
-    def setPort(self, port_index):
+    def setPort(self, port_index, baudrate=115200):
         self._portindex = port_index
+        self._baudrate = baudrate
         if not self._busy:
             self._ser.close()
         try:
-            self._ser = serial.Serial(port=self._ports[self._portindex].device, baudrate=self.baudrate, timeout=.1)
+            self._ser = serial.Serial(port=self._ports[self._portindex].device, baudrate=self._baudrate, timeout=.1)
             self._busy = False
             return True
-        except:
+        except serial.serialutil.SerialException:
             self._busy = True
             return False
 
@@ -90,10 +94,10 @@ class Communicator:
 
     # State related methods
     def pause(self):
-        self._pause = True
+        self._paused = True
     
     def resume(self):
-        self._pause = False
+        self._paused = False
 
     def terminate(self):
         self.sendCommand('q')
@@ -116,7 +120,7 @@ class Communicator:
         return False
 
     # Big meaty finite state machine method
-    def checkSerialLoop(self):
+    def checkSerial(self):
         '''Record serial recieved and send serial commands'''
         #end early if serial port is busy
         if self._busy:
@@ -130,6 +134,7 @@ class Communicator:
             recieved = self._ser.readline()
             decoded = recieved.decode('ascii').strip()
             msgType = decoded[0]
+            self._message = decoded
             
             #fsm to control sending commands
             match self._state:
@@ -157,11 +162,36 @@ class Communicator:
                 rawdata = decoded[1:]
                 data = rawdata.split(",")
                 self._log.logData(data)
+
         return True
 
+    def close(self):
+        '''closes all objects'''
+        self.terminate()
+        logger.close()
+        self._cmdfile.close()
+        self._ser.close()
+
 def tester():
+    import time
+
     test = Communicator(baudrate=115200, generate_csv=True)
     print('is busy:', test.isBusy())
     print('is paused:', test._paused)
+    test.resume()
+    print('is paused:', test._paused)
+    test.pause()
+    print('is paused:', test._paused)
+    test.setPort(0)
+    print('port:', test.currentPort())
+    print('is busy:', test.isBusy())
+    test.autoFindPort("CH340")
+    print('port:', test.currentPort())
+    print('is busy:', test.isBusy())
+    test.sendCommand('t 50')
+    time.sleep(2)
+    test.checkSerial()
+    print('message available:', test.newMessage())
+    print('message recieved:', test.readMessage())
 
 tester()
