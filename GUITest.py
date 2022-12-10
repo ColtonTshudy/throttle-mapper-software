@@ -75,8 +75,8 @@ plt.ylabel('Voltage (v)')
 plt.xlabel('Time (s)')
 plt.gca().set_ylim(ymin=0, ymax=5)
 plt.grid(linestyle=':')
-xs = []
-ys = []
+xs = [0]
+ys = [0]
 
 # variables
 paused = True
