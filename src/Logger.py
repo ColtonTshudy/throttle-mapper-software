@@ -56,4 +56,4 @@ def tester():
     print(log.isOpen())
     log.close()
 
-tester()
+#tester()

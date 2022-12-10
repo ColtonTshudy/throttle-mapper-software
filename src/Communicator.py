@@ -51,7 +51,7 @@ class Communicator:
         self.setPort(0) #default to port 0
         return False
                 
-    def newMessage(self):
+    def hasMessage(self):
         return self._available
 
     def readMessage(self):
@@ -112,6 +112,7 @@ class Communicator:
         self._cmdfile = open(path)
         self._commands = self._cmdfile.readlines()
         self._totalcommands = len(self._commands)
+        self._fileisopen = True
 
     def closeCommandFile(self):
         if self._fileisopen:
@@ -142,7 +143,7 @@ class Communicator:
                     if msgType == '>':
                         self._state = State.Pending
                 case State.Pending:
-                    if not self._paused:
+                    if not self._paused and self._fileisopen:
                         self.sendCommand(self._commands[self._cmdindex])
                         self._cmdindex += 1
                         self._state = State.Executing
@@ -175,7 +176,7 @@ class Communicator:
 def tester():
     import time
 
-    test = Communicator(baudrate=115200, generate_csv=True)
+    test = Communicator(baudrate=115200, generate_csv=False)
     print('is busy:', test.isBusy())
     print('is paused:', test._paused)
     test.resume()
@@ -188,10 +189,39 @@ def tester():
     test.autoFindPort("CH340")
     print('port:', test.currentPort())
     print('is busy:', test.isBusy())
-    test.sendCommand('t 50')
+
+    print('Waiting for message...')
     time.sleep(2)
+    test.sendCommand('t 50')
     test.checkSerial()
-    print('message available:', test.newMessage())
+    print('message available:', test.hasMessage())
+    print('message recieved:', test.readMessage())
+    print('message available:', test.hasMessage())
+    print('Waiting for next messages...')
+    time.sleep(1)
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
+    print('message recieved:', test.readMessage())
+    test.checkSerial()
     print('message recieved:', test.readMessage())
 
 tester()

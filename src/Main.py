@@ -103,7 +103,6 @@ def update_figure(data):
 sc = SerialCommunicator()
 
 while True:
-    serial_r = dr.checkSerial(paused, command, terminate, restart)
 
     #reset any button variables
     command = False
@@ -111,7 +110,7 @@ while True:
     restart = False
 
     #see if checkSerial returned data
-    if serial_r != False:
+    if sc.hasMessage:
         if serial_r[0] != '[':
             window['-STLINE-'].print(serial_r[1], autoscroll = auto_scroll)
         else:
