@@ -28,10 +28,6 @@ plot_col = [
 
 serial_col = [ 
     [ 
-        sg.Text('Select Port:'),
-        sg.Combo(['no ports found'], size=20),
-    ],
-    [ 
         sg.Text('Serial Messages                                                   Serial Data')
     ],
     [ 
@@ -67,7 +63,6 @@ window = sg.Window(titlebar,
 
 #initial state of window
 window['-TIME_SLIDER-'].update(value = 20)
-
 
 #matplotlib
 fig = plt.figure(figsize = (6,4))
@@ -115,25 +110,23 @@ def update_figure(data):
 
 while True:
     try:
-        if(dr.serialConnected()):
-            serial_r = dr.checkSerial(paused, command, terminate, restart)
+        serial_r = dr.checkSerial(paused, command, terminate, restart)
 
         #reset any button variables
         command = False
         terminate = False
         restart = False
 
-        if(dr.serialConnected()):
-            #see if checkSerial returned data
-            if serial_r != False:
-                if serial_r[0] != '[':
-                    window['-STLINE-'].print(serial_r[1], autoscroll = auto_scroll)
-                else:
-                    window['-RAWDATA-'].print(serial_r[1], autoscroll = auto_scroll)
-                if serial_r[2] != False:
-                    volts = serial_r[2][0]
-                    time = serial_r[2][3]
-                    update_figure([time, volts])
+        #see if checkSerial returned data
+        if serial_r != False:
+            if serial_r[0] != '[':
+                window['-STLINE-'].print(serial_r[1], autoscroll = auto_scroll)
+            else:
+                window['-RAWDATA-'].print(serial_r[1], autoscroll = auto_scroll)
+            if serial_r[2] != False:
+                volts = serial_r[2][0]
+                time = serial_r[2][3]
+                update_figure([time, volts])
 
         #check if command file is done
         if dr.endOfFile() and not paused:
@@ -148,35 +141,34 @@ while True:
         #exit
         if event == 'Exit' or event == sg.WIN_CLOSED:
                 break
-        
-        if(dr.serialConnected()):
-            #pause
-            if event == '-PAUSE-':
-                if paused:
-                    paused = False
-                    window['-PAUSE-'].Update("Pause")
-                    window['-SEND-'].update(disabled=True)
-                    if dr.endOfFile():
-                        restart = True
-                else:
-                    paused = True
-                    window['-SEND-'].update(disabled=False)
-                    window['-PAUSE-'].Update("Unpause")
-            
-            #send
-            elif event == '-SEND-':
-                command = values['-COMMAND-'];
-                window['-COMMAND-']('')
 
-            #terminate
-            elif event == '-TERMINATE-':
-                terminate = True
+        #pause
+        elif event == '-PAUSE-':
+            if paused:
+                paused = False
+                window['-PAUSE-'].Update("Pause")
+                window['-SEND-'].update(disabled=True)
+                if dr.endOfFile():
+                    restart = True
+            else:
                 paused = True
-                window['-PAUSE-'].Update("Start")
-                window['-STLINE-'].print("Terminated command file execution.", autoscroll = auto_scroll)
+                window['-SEND-'].update(disabled=False)
+                window['-PAUSE-'].Update("Unpause")
+
+        #send
+        elif event == '-SEND-':
+            command = values['-COMMAND-'];
+            window['-COMMAND-']('')
+
+        #terminate
+        elif event == '-TERMINATE-':
+            terminate = True
+            paused = True
+            window['-PAUSE-'].Update("Start")
+            window['-STLINE-'].print("Terminated command file execution.", autoscroll = auto_scroll)
 
         #plot buttons
-        if event == '-PLOT_FULL-':
+        elif event == '-PLOT_FULL-':
             window['-TIME_SLIDER-'].update(visible=not values['-PLOT_FULL-'])
             fullgraph = values['-PLOT_FULL-']
             update_figure('')

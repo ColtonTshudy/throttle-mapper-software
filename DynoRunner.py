@@ -9,7 +9,6 @@ import csv
 import serial.tools.list_ports
 from enum import Enum
 import os
-import serial.tools.list_ports
 
 #======================================
 # DYNO THROTTLE MAPPER RUNNER
@@ -26,30 +25,14 @@ class State(Enum):
 
 # Functions
 #================================
-
-def getSerialList():
-    return ports.description
-getSerialList.ser = ''
-getSerialList.ports = ports = list(serial.tools.list_ports.comports())
-getSerialList.serial_is_connected = False
-
-def findDefaultPortIndex():
-    '''Returns the Arduino Nano port, otherwise returns port index 0'''
-    i = 0
-    for p in getSerialList.ports:
+def findArduinoPort():
+    '''Returns the Arduino Nano port, otherwise returns port COM1'''
+    import serial.tools.list_ports
+    ports = list(serial.tools.list_ports.comports())
+    for p in ports:
         if SER_PORT_NAME in p.description: #arduino nano tag
-            return i
-        i = i+1
-    return 0
-
-def setSerialPort(port_index):
-    try:
-        getSerialList.ser = serial.Serial(port=checkSerial.ports[port_index].device, baudrate=115200, timeout=.1)
-        getSerialList.ser.flushInput()
-        getSerialList.serial_is_connected = True
-    except:
-        print('Serial port is busy or inaccessable.')
-        getSerialList.serial_is_connected = False
+            return p.device
+    return False
 
 def exitProgram(softExitMsg):
     '''Prints a message and raises an exception to trigger the catch'''
@@ -70,11 +53,12 @@ def createCSV():
     writer.writerow(['Volts', 'Thr%', 'Ohms', 'Millis'])
     return writer, d
 
-def serialConnected():
-    return getSerialList.serial_is_connected
-
 # Startup
 # ==========================================
+
+arduino_port = findArduinoPort()
+if arduino_port == False:
+    exitProgram('Serial port not found.')
 
 #CSV setup
 if GENERATE_CSV:
@@ -84,7 +68,9 @@ if GENERATE_CSV:
 f = open('throttle_cmds.txt')
 lines = f.readlines()
 
-setSerialPort(findDefaultPortIndex())
+#serial port   
+ser = serial.Serial(port=arduino_port, baudrate=115200, timeout=.1)
+ser.flushInput()
 
 # Serial
 # =======================================
@@ -95,10 +81,10 @@ def checkSerial(paused, command, terminate, restart):
     if command != False:
         if command[len(command)-1] != '\n':
             command = command + '\n'
-        getSerialList.ser.write(command.encode('ascii'))
+        ser.write(command.encode('ascii'))
         print(command)
     if terminate:
-        getSerialList.ser.write('q\n'.encode('ascii'))
+        ser.write('q\n'.encode('ascii'))
         print('terminated')
         restart = True
 
@@ -107,10 +93,11 @@ def checkSerial(paused, command, terminate, restart):
         checkSerial.curLine = 0
         checkSerial.fsmState = State.Pending
 
+
     #wait until a message is recieved
-    if getSerialList.ser.inWaiting() != 0:
+    if ser.inWaiting() != 0:
         #tame the recieved message
-        recieved = getSerialList.ser.readline()
+        recieved = ser.readline()
         decoded = recieved.decode('ascii')
         decoded = decoded.strip()
         print(decoded)
@@ -128,7 +115,7 @@ def checkSerial(paused, command, terminate, restart):
                     cmd = lines[checkSerial.curLine]
                     if cmd[len(cmd)-1] != '\n':
                         cmd = cmd + '\n'
-                    getSerialList.ser.write(cmd.encode('ascii'))
+                    ser.write(cmd.encode('ascii'))
                     checkSerial.curLine = checkSerial.curLine + 1
                     checkSerial.fsmState = State.Executing
 
@@ -166,9 +153,9 @@ def endOfFile():
 
 def closeRunner():
     '''closes all files when user terminates program'''
-    getSerialList.ser.write("q".encode('ascii')) #send quit command
+    ser.write("q".encode('ascii')) #send quit command
     if GENERATE_CSV:
         d.close
     f.close
-    getSerialList.ser.close
+    ser.close
     print('DynoRunner Terminated')
