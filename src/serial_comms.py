@@ -19,7 +19,7 @@ class State(Enum):
 
 #BEGIN CLASS DEFINITION
 class Communicator:
-    def __init__(self, baudrate=115200, generate_csv=True, default_port_name='CH340'):
+    def __init__(self, baudrate=115200, generate_csv=True):
         self._baudrate = baudrate
         self._ports = list(serial.tools.list_ports.comports())
         self._portindex = 0
@@ -37,21 +37,19 @@ class Communicator:
         self._log = logger.Logger()
         self._paused = True
         self._end_of_file = False
-        self.autoFindPort(default_port_name)
 
         if generate_csv:
             self._log.open()
 
     # Serial methods
-    def autoFindPort(self, port_name):
+    def autoFindPort(self, port_name='CH340'):
         '''Returns the Arduino Nano port, otherwise returns port COM1'''
         i = 0
         for p in self.listPorts():
-            if port_name in p: #arduino nano tag
+            if port_name in p and p != self.currentPort():
                 self.setPort(i,  baudrate=self._baudrate)
                 return True
             i += 1
-        self.setPort(0) #default to port 0
         return False
                 
     def hasMessage(self):
@@ -98,9 +96,7 @@ class Communicator:
             if command[-1] != '\n':
                 command += '\n'
             if 'q' in command:
-                self._state = State.Pending
-                self._paused = True
-                self._end_of_file = True
+                self.reset()
             self._ser.write(command.encode('ascii'))
 
     # State related methods
@@ -119,24 +115,28 @@ class Communicator:
     def reachedFileEnd(self):
         return self._end_of_file
 
-    def resetFile(self):
+    def reset(self):
+        self._state = State.Pending
+        self._paused = True
+        self._end_of_file = True
+
+    def restartFile(self):
         self._cmdindex = 0
         self._end_of_file = False
 
     # File reader methods
     def openCommandFile(self, path):
-        if self._fileisopen:
-            self._cmdfile.close()
-        
         try:
-            self._cmdfile = open(path)
+            new_file = open(path)
+            if self._fileisopen:
+                self._cmdfile.close()
+            self._cmdfile = new_file
             self._commands = self._cmdfile.readlines()
             self._totalcommands = len(self._commands)
             self._fileisopen = True
+            return True
         except:
-            self._commands = 0
-            self._totalcommands = 0
-            self._fileisopen = False
+            return False
 
     def closeCommandFile(self):
         if self._fileisopen:

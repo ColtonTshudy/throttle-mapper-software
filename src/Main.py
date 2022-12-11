@@ -35,9 +35,19 @@ serial_connectivity_col = [
 
 serial_col = [ 
     [ 
+        sg.Text('Command File'),
+        sg.In(size=(45, 10), enable_events=True, key="-FILE_SEL-"),
+        sg.FileBrowse(file_types=(("TXT Files", "*.txt"), ("ALL Files", "*.*"))),
+        sg.Button('Open', key='-OPEN-'),
+    ],
+    [ 
+        sg.HSeparator(pad=(20,20))
+    ],
+    [ 
         sg.Text('Port Select'),
-        sg.Combo(sc.listPorts(), default_value=sc.currentPort(), key='-PORT_SEL-', enable_events=True),
-        sg.Col(serial_connectivity_col, pad=(0,0))
+        sg.Combo(sc.listPorts(), key='-PORT_SEL-', enable_events=True),
+        sg.Col(serial_connectivity_col, pad=(0,0)),
+        sg.Button('Auto', key='-AUTO-'),
     ],
     [ 
         sg.Text('Serial Messages                                                     Serial Data')
@@ -116,8 +126,7 @@ def update_figure(data):
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 
-startup_msg = f'Serial connected? {not sc.isBusy()}'
-window['-STLINE-'].print(startup_msg, autoscroll = auto_scroll)
+window.write_event_value('-AUTO-', value=True)
 
 while True:
     sc.checkSerial()
@@ -136,7 +145,7 @@ while True:
 
     #check if command file is done
     if sc.reachedFileEnd() and not sc.isPaused():
-        sc.pause()
+        sc.reset()
         window['-SEND-'].update(disabled=False)
         window['-PAUSE-'].Update("Start")
         window['-STLINE-'].print("Reached end of command file.", autoscroll = auto_scroll)
@@ -146,6 +155,7 @@ while True:
 
     #exit
     if event == 'Exit' or event == sg.WIN_CLOSED:
+        sc.close()
         break
 
     #pause
@@ -155,7 +165,7 @@ while True:
             window['-PAUSE-'].Update("Pause")
             window['-SEND-'].update(disabled=True)
             if sc.reachedFileEnd():
-                sc.resetFile()
+                sc.restartFile()
         else:
             sc.pause()
             window['-SEND-'].update(disabled=False)
@@ -185,16 +195,34 @@ while True:
         auto_scroll = values['-AS-']
 
     #port select
-    if event == '-PORT_SEL-':
-        new_port = values['-PORT_SEL-']
-        sc.autoFindPort(new_port)
-        window['-STLINE-'].print(f'Serial Port: {sc.currentPort()}', autoscroll = auto_scroll)
-        if sc.isBusy():
-            window['-CON-'].update(visible=False)
-            window['-DIS-'].update(visible=True)
+    if event == '-PORT_SEL-' or event == '-AUTO-':
+        if event == '-PORT_SEL-':
+            new_port = values['-PORT_SEL-']
+            port_updated = sc.autoFindPort(new_port)
         else:
-            window['-CON-'].update(visible=True)
-            window['-DIS-'].update(visible=False)
-        xs = [0]
-        ys = [0]
-        update_figure('')
+            port_updated = sc.autoFindPort()
+            window['-PORT_SEL-'].update(value = sc.currentPort())
+        
+        if port_updated:
+            if sc.isBusy():
+                window['-CON-'].update(visible=False)
+                window['-DIS-'].update(visible=True)
+            else:
+                window['-CON-'].update(visible=True)
+                window['-DIS-'].update(visible=False)
+            window['-STLINE-'].update(value='')
+            window['-RAWDATA-'].update(value='')
+            xs = [0]
+            ys = [0]
+            update_figure('')
+            if not sc.isPaused():
+                window.write_event_value('-TERMINATE-', value=True)          
+                sc.pause()
+
+    #file select
+    if event == '-OPEN-':
+        if not sc.isPaused():
+            window.write_event_value('-TERMINATE-', value=True)          
+            sc.pause()
+        if sc.openCommandFile(values['-FILE_SEL-']):
+            window['-STLINE-'].print("Opened file, press Start to begin.", autoscroll = auto_scroll)
