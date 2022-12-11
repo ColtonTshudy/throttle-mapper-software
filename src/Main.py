@@ -1,5 +1,5 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.20"
+__version__ = "0.21"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
@@ -18,12 +18,16 @@ def IText(*args, **kwargs):
 
 plot_col = [
     [ 
-        sg.Canvas(key = '-CANVAS-'),
+        sg.Push(),
+        sg.Checkbox('Full Time Scale', enable_events=True, key='-PLOT_FULL-'),
     ],
     [ 
-        sg.Button('Moving Window Time Scale', key='-PLOT_WINDOW-'),
-        sg.Button('Full Time Scale', key='-PLOT_FULL-')
-    ]
+        sg.Canvas(key = '-CANVAS-'),
+    ],
+    [
+        sg.Push(),
+        sg.Slider(orientation ='horizontal', key='-TIME_SLIDER-', range=(10,100), enable_events=True),
+    ],
 ]
 
 serial_connectivity_col = [
@@ -105,6 +109,7 @@ auto_scroll = True
 restart = False
 fullgraph = False
 x_min = 0
+time_scale = 20
 
 def update_figure(data):
     axes = fig.axes
@@ -121,11 +126,13 @@ def update_figure(data):
     if fullgraph:
         x_min = 0
     else:
-        x_min = xs[-1]-20
+        x_min = xs[-1]-time_scale
     plt.xlim(xmin = x_min)
     figure_canvas_agg.draw()
     figure_canvas_agg.get_tk_widget().pack()
 
+#window initial states
+window['-TIME_SLIDER-'].update(value = 20)
 window.write_event_value('-AUTO-', value=True)
 
 while True:
@@ -161,11 +168,12 @@ while True:
     #pause
     elif event == '-PAUSE-':
         if sc.isPaused():
-            sc.resume()
-            window['-PAUSE-'].Update("Pause")
-            window['-SEND-'].update(disabled=True)
-            if sc.reachedFileEnd():
-                sc.restartFile()
+            if sc._fileisopen:
+                sc.resume()
+                window['-PAUSE-'].Update("Pause")
+                window['-SEND-'].update(disabled=True)
+                if sc.reachedFileEnd():
+                    sc.restartFile()
         else:
             sc.pause()
             window['-SEND-'].update(disabled=False)
@@ -183,11 +191,14 @@ while True:
         window['-STLINE-'].print("Terminated command file execution.", autoscroll = auto_scroll)
 
     #plot buttons
-    elif event == '-PLOT_WINDOW-':
-        fullgraph = False
-        update_figure('')
     elif event == '-PLOT_FULL-':
-        fullgraph = True
+        window['-TIME_SLIDER-'].update(visible=not values['-PLOT_FULL-'])
+        fullgraph = values['-PLOT_FULL-']
+        update_figure('')
+
+    #graph time scale
+    if event == '-TIME_SLIDER-':
+        time_scale = values['-TIME_SLIDER-']
         update_figure('')
 
     #autoscroll
