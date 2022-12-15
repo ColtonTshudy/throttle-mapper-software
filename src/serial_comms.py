@@ -130,6 +130,9 @@ class Communicator:
             new_file = open(path)
             if self._fileisopen:
                 self._cmdfile.close()
+            if self._fileisopen and self._cmdfile.name == new_file.name:
+                new_file.close()
+                return False
             self._cmdfile = new_file
             self._commands = self._cmdfile.readlines()
             self._totalcommands = len(self._commands)
