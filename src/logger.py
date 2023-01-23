@@ -20,8 +20,8 @@ class Logger:
         timeobj = datetime.now()
         timestamp = timeobj.strftime('%m_%d_%Y_%I_%M_%p')
 
-        this_path = os.getcwd()
-        rel_path = f'logs\\throttle_log_{timestamp}.csv'
+        this_path = os.path.dirname(os.path.abspath(__file__),)
+        rel_path = f'..\\logs\\throttle_log_{timestamp}.csv'
         full_path = os.path.join(this_path, rel_path)
 
         self._file = open(full_path, 'w', newline='')
