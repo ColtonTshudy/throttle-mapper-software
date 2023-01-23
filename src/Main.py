@@ -1,9 +1,15 @@
 __author__ = "Colton Tshudy"
-__version__ = "0.21"
+__version__ = "0.3"
 __email__ = "coltont@vt.edu"
 __status__ = "Prototyping"
 
 #Main file
+
+#======================================
+# CONFIGURATION
+__baudrate__ = 115200
+__save_to_csv__ = True
+#======================================
 
 import PySimpleGUI as sg
 import matplotlib.pyplot as plt
@@ -11,7 +17,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial_comms
 
 sg.theme('DefaultNoMoreNagging')
-sc = serial_comms.Communicator(baudrate=115200, generate_csv=False)
+sc = serial_comms.Communicator(baudrate=__baudrate__, generate_csv=__save_to_csv__)
 
 def IText(*args, **kwargs):
     return sg.Col([[sg.Text(*args, **kwargs)]], pad=(0,0))
@@ -232,8 +238,8 @@ while True:
 
     #file select
     if event == '-OPEN-':
-        if not sc.isPaused():
-            window.write_event_value('-TERMINATE-', value=True)          
+        window.write_event_value('-TERMINATE-', value=True)
+        if not sc.isPaused():     
             sc.pause()
         if sc.openCommandFile(values['-FILE_SEL-']):
             window['-STLINE-'].print("Opened file, press Start to begin.", autoscroll = auto_scroll)

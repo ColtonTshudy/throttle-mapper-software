@@ -21,7 +21,7 @@ class Logger:
         timestamp = timeobj.strftime('%m_%d_%Y_%I_%M_%p')
 
         this_path = os.getcwd()
-        rel_path = 'logs\\throttle_log_{}.csv'.format(timestamp)
+        rel_path = f'logs\\throttle_log_{timestamp}.csv'
         full_path = os.path.join(this_path, rel_path)
 
         self._file = open(full_path, 'w', newline='')
@@ -46,14 +46,16 @@ def tester():
     #check what happens if not yet open
     log = Logger()
     log.logData(['test', 'data', ':()*&<>', '12345'])
+    print(f"File open? (False): {log.isOpen()}")
     log.close()
-    print(log.isOpen())
+    print(f"File open? (False): {log.isOpen()}")
 
     #check what happens when open
     log.open()
     log.logData(['test', 'data', ':()*&<>', '12345'])
     log.logData(['test', 'successful!'])
-    print(log.isOpen())
+    print(f"File open? (True): {log.isOpen()}")
     log.close()
+    print(f"File open? (False): {log.isOpen()}")
 
 #tester()
