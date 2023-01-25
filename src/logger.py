@@ -42,6 +42,7 @@ class Logger:
         if self._isopen:
             self._file.close()
 
+# Method to run a test of the code
 def tester():
     #check what happens if not yet open
     log = Logger()
