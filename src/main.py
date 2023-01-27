@@ -9,6 +9,8 @@ __status__ = "Prototyping"
 # CONFIGURATION
 __baudrate__ = 115200
 __save_to_csv__ = True
+__pot_resistance__ = 100000
+__arduino_vref__ = 4.71
 #======================================
 
 import PySimpleGUI as sg
@@ -106,6 +108,7 @@ plt.gca().set_ylim(ymin=0, ymax=5)
 plt.grid(linestyle=':')
 xs = [0]
 ys = [0]
+ye = [0]
 
 # variables
 paused = True
@@ -117,13 +120,15 @@ fullgraph = False
 x_min = 0
 time_scale = 20
 
-def update_figure(data):
+def update_figure(xy_point = '', res = 0):
     axes = fig.axes
     axes[0].clear()
-    if len(data) == 2:
-        xs.append(float(data[0])/1000)
-        ys.append(float(data[1]))
+    if len(xy_point) == 2:
+        xs.append(float(xy_point[0])/1000)
+        ys.append(float(xy_point[1]))
+        ye.append(float(res)/__pot_resistance__*__arduino_vref__)
     axes[0].plot(xs,ys,'-b')
+    axes[0].plot(xs,ye,'--r')
     plt.title('Throttle Voltage', fontsize = 10)
     plt.ylabel('Voltage (v)')
     plt.xlabel('Time (s)')
@@ -154,7 +159,8 @@ while True:
             data = recieved[1:].split(",")
             volts = data[0]
             time = data[3]
-            update_figure([time, volts])
+            resistance = data[2]
+            update_figure(xy_point = [time, volts], res = resistance)
 
     #check if command file is done
     if sc.reachedFileEnd() and not sc.isPaused():
@@ -200,12 +206,12 @@ while True:
     elif event == '-PLOT_FULL-':
         window['-TIME_SLIDER-'].update(visible=not values['-PLOT_FULL-'])
         fullgraph = values['-PLOT_FULL-']
-        update_figure('')
+        update_figure()
 
     #graph time scale
     if event == '-TIME_SLIDER-':
         time_scale = values['-TIME_SLIDER-']
-        update_figure('')
+        update_figure()
 
     #autoscroll
     if values['-AS-'] != auto_scroll:
@@ -231,7 +237,7 @@ while True:
             window['-RAWDATA-'].update(value='')
             xs = [0]
             ys = [0]
-            update_figure('')
+            update_figure()
             if not sc.isPaused():
                 window.write_event_value('-TERMINATE-', value=True)          
                 sc.pause()
