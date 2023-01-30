@@ -44,6 +44,7 @@ class Communicator:
     # Serial methods
     def autoFindPort(self, port_name='CH340'):
         '''Returns the Arduino Nano port, otherwise returns port COM1'''
+        self._ports = list(serial.tools.list_ports.comports())
         i = 0
         for p in self.listPorts():
             if port_name in p and p != self.currentPort():
