@@ -237,6 +237,7 @@ while True:
             window['-RAWDATA-'].update(value='')
             xs = [0]
             ys = [0]
+            ye = [0]
             update_figure()
             if not sc.isPaused():
                 window.write_event_value('-TERMINATE-', value=True)          
