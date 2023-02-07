@@ -10,7 +10,7 @@ __status__ = "Prototyping"
 __baudrate__ = 115200
 __save_to_csv__ = True
 __pot_resistance__ = 100000
-__arduino_vref__ = 4.71
+__max_bike_voltage__ = 5.00
 #======================================
 
 import PySimpleGUI as sg
