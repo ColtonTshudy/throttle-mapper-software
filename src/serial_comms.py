@@ -5,7 +5,7 @@ __status__ = "Prototyping"
 
 #Talks to the hardware
 
-import serial
+import serial as serial
 import serial.tools.list_ports
 from enum import Enum
 import logger as logger
@@ -46,10 +46,15 @@ class Communicator:
         '''Returns the Arduino Nano port, otherwise returns port COM1'''
         i = 0
         for p in self.listPorts():
-            if port_name in p and p != self.currentPort():
+            if port_name == self.currentPort():
+                print("Serial port", p, "already connected!")
+                return False
+            if port_name in p:
+                print("Serial port", p, "connected.")
                 self.setPort(i,  baudrate=self._baudrate)
                 return True
             i += 1
+        print("Serial port", p, "not found.")
         return False
                 
     def hasMessage(self):
@@ -74,7 +79,6 @@ class Communicator:
         self._portindex = port_index
         if baudrate != -1:
             self._baudrate = baudrate
-            
         if not self._busy:
             self._ser.close()
         try:
@@ -274,4 +278,6 @@ def tester():
 
     test.close()
 
-#tester()
+## Debug code, if run as main
+if __name__ == "__main__":
+    tester()

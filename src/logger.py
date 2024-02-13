@@ -20,9 +20,8 @@ class Logger:
         timeobj = datetime.now()
         timestamp = timeobj.strftime('%m_%d_%Y_%I_%M_%p')
 
-        this_path = os.path.dirname(os.path.abspath(__file__),)
-        rel_path = f'..\\logs\\throttle_log_{timestamp}.csv'
-        full_path = os.path.join(this_path, rel_path)
+        rel_path = f'terthrottle_log_{timestamp}.csv'
+        full_path = os.path.join(self._get_download_path(), rel_path)
 
         self._file = open(full_path, 'w', newline='')
         self._writer = csv.writer(self._file,delimiter=',')
@@ -41,6 +40,18 @@ class Logger:
     def close(self):
         if self._isopen:
             self._file.close()
+
+    def _get_download_path(self):
+        '''Returns the default downloads path for linux or windows'''
+        if os.name == 'nt':
+            import winreg
+            sub_key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
+            downloads_guid = '{374DE290-123F-4565-9164-39C4925E467B}'
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub_key) as key:
+                location = winreg.QueryValueEx(key, downloads_guid)[0]
+            return location
+        else:
+            return os.path.join(os.path.expanduser('~'), 'downloads')
 
 # Method to run a test of the code
 def tester():

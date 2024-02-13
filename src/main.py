@@ -18,6 +18,7 @@ import serial_comms
 
 sg.theme('DefaultNoMoreNagging')
 sc = serial_comms.Communicator(baudrate=__baudrate__, generate_csv=__save_to_csv__)
+print(sc.currentPort())
 
 def IText(*args, **kwargs):
     return sg.Col([[sg.Text(*args, **kwargs)]], pad=(0,0))
